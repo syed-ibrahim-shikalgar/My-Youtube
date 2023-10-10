@@ -1,9 +1,42 @@
-import React from "react";
-import { useDispatch } from "react-redux";
+import React, { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { toggleMenu } from "../utils/appSlice";
+import { youtube_search_api } from "../utils/Constant";
+import { cacheResults } from "../utils/searchSlice";
 
 const Header = () => {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  const searchCache = useSelector((store) => store.search);
   const dispatch = useDispatch();
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchCache[searchQuery]) {
+        setSuggestions(searchCache[searchQuery]);
+      } else {
+        getSearchSugesstions();
+      }
+    }, 200);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [searchQuery]);
+
+  const getSearchSugesstions = async () => {
+    const data = await fetch(youtube_search_api + searchQuery);
+    const json = await data.json();
+    setSuggestions(json[1]);
+
+    dispatch(
+      cacheResults({
+        [searchQuery]: json[1],
+      })
+    );
+  };
 
   const toggleMenuHandler = () => {
     dispatch(toggleMenu());
@@ -26,14 +59,32 @@ const Header = () => {
         />
       </div>
       <div className="col-span-10 text-center">
-        <input
-          placeholder="Search"
-          className="w-1/2 p-2 pl-5 border rounded-l-full border-gray-500 outline-none"
-          type="search"
-        />
-        <button className="border p-2 px-[20px] bg-gray-200 rounded-e-full border-gray-500">
-          <ion-icon name="search-outline"></ion-icon>
-        </button>
+        <div>
+          <input
+            placeholder="Search"
+            className="w-1/2 p-2 pl-5 border rounded-l-full border-gray-500 outline-none"
+            type="search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onFocus={() => setShowSuggestions(true)}
+            onBlur={() => setShowSuggestions(false)}
+          />
+          <button className="border p-2 px-[20px] bg-gray-200 rounded-e-full border-gray-500">
+            <ion-icon name="search-outline"></ion-icon>
+          </button>
+        </div>
+
+        {showSuggestions && (
+          <div className="ml-[17.5rem] border border-gray-100 py-2 px-5 w-[37rem] absolute bg-white shadow-lg rounded-lg">
+            <ul className="text-start">
+              {suggestions.map((s) => (
+                <li key={s} className="py-2 hover:bg-gray-200">
+                  <ion-icon name="search-outline"></ion-icon> {s}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
       <div className="col-span-1">
         <img
